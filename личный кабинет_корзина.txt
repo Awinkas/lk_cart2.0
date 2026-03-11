@@ -1,0 +1,994 @@
+
+if ( ! defined( 'ABSPATH' ) ) exit;
+
+add_filter( 'get_post_metadata', function( $value, $object_id, $meta_key, $single ) {
+	if ( $meta_key !== '_elementor_edit_mode' ) {
+		return $value;
+	}
+	// Только на фронте, не в админке и не в AJAX
+	if ( is_admin() || wp_doing_ajax() ) {
+		return $value;
+	}
+	// Получаем ID страниц My Account и Cart из настроек WooCommerce
+	$account_page_id = get_option( 'woocommerce_myaccount_page_id' );
+	$cart_page_id    = get_option( 'woocommerce_cart_page_id' );
+	$bypass_ids = array_filter( [ $account_page_id, $cart_page_id ] );
+	if ( empty( $bypass_ids ) || ! in_array( (int) $object_id, array_map( 'intval', $bypass_ids ), true ) ) {
+		return $value;
+	}
+	// Возвращаем пустой массив → Elementor не активируется
+	return $single ? '' : [ '' ];
+}, 10, 4 );
+
+/* ────────────────────────────────────────────────────────────
+   2. ШРИФТЫ
+   ──────────────────────────────────────────────────────────── */
+add_action( 'wp_enqueue_scripts', function() {
+	if ( ! is_account_page() && ! is_cart() ) return;
+	wp_enqueue_style( 'warmory-fonts',
+		'https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Jost:wght@300;400;500;600&display=swap',
+		[], null
+	);
+}, 5 );
+
+/* ────────────────────────────────────────────────────────────
+   3. CSS — только визуальное оформление
+   Kadence теперь сама управляет layout'ом (flex, ширины).
+   ──────────────────────────────────────────────────────────── */
+add_action( 'wp_head', function() {
+	if ( ! is_account_page() ) return;
+?>
+<style id="warmory-account-v4">
+:root {
+  --wm-bg: #f7ede8;
+  --wm-card: #fdf7f4;
+  --wm-card2: #f4ece7;
+  --wm-border: #e8d9d1;
+  --wm-brown: #4a3728;
+  --wm-brown-lt: #7a5c48;
+  --wm-accent: #c4956a;
+  --wm-text: #3a2e28;
+  --wm-muted: #9e8a7e;
+  --wm-r: 16px;
+  --wm-rs: 10px;
+  --wm-sh: 0 4px 20px rgba(74,55,40,.07);
+  --wm-sh-h: 0 8px 28px rgba(74,55,40,.13);
+  --wm-serif: 'Cormorant Garamond', Georgia, serif;
+  --wm-sans: 'Jost', 'Segoe UI', sans-serif;
+}
+
+/* Скроллбар всегда виден — лого не прыгает */
+body.woocommerce-account { overflow-y: scroll; }
+
+/* Ширина контейнера — как на остальных страницах сайта */
+body.woocommerce-account .site-container .site-inner-wrap,
+body.woocommerce-account .content-container.site-container {
+  max-width: 1290px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
+  padding-top: 50px;
+  padding-bottom: 50px;
+}
+
+/* Базовые шрифты */
+body.woocommerce-account .woocommerce-MyAccount-navigation,
+body.woocommerce-account .woocommerce-MyAccount-content {
+  font-family: var(--wm-sans);
+  color: var(--wm-text);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   SIDEBAR
+   ═══════════════════════════════════════════════════════════ */
+body.woocommerce-account .woocommerce-MyAccount-navigation {
+  background: var(--wm-card);
+  border-radius: var(--wm-r);
+  box-shadow: var(--wm-sh);
+  padding: 1.5rem 1.25rem;
+}
+body.woocommerce-account .woocommerce-MyAccount-navigation::before {
+  content: none !important;
+  display: none !important;
+}
+
+/* Аватар */
+body.woocommerce-account .woocommerce-MyAccount-navigation img.avatar {
+  border-radius: 50% !important;
+  border: 3px solid var(--wm-border) !important;
+  object-fit: cover !important;
+}
+
+/* Список */
+body.woocommerce-account .woocommerce-MyAccount-navigation ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+body.woocommerce-account .woocommerce-MyAccount-navigation ul li {
+  margin-bottom: 2px;
+}
+body.woocommerce-account .woocommerce-MyAccount-navigation ul li a {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-radius: var(--wm-rs);
+  color: var(--wm-brown-lt);
+  font-size: 1rem;
+  font-weight: 400;
+  text-decoration: none;
+  transition: background .2s, color .2s, border-color .2s;
+  border-left: 3px solid transparent;
+}
+body.woocommerce-account .woocommerce-MyAccount-navigation ul li a:hover {
+  background: var(--wm-card2);
+  color: var(--wm-brown);
+  border-left-color: var(--wm-border);
+}
+body.woocommerce-account .woocommerce-MyAccount-navigation ul li.is-active > a {
+  background: var(--wm-card2);
+  color: var(--wm-brown);
+  font-weight: 600;
+  border-left-color: var(--wm-accent);
+}
+
+/* Иконки */
+body.woocommerce-account .woocommerce-MyAccount-navigation ul li a::before {
+  font-size: 1.15rem;
+  flex-shrink: 0;
+  width: 1.4em;
+  text-align: center;
+}
+body.woocommerce-account .woocommerce-MyAccount-navigation-link--dashboard > a::before     { content: '⊞'; }
+body.woocommerce-account .woocommerce-MyAccount-navigation-link--orders > a::before        { content: '🛍'; }
+body.woocommerce-account .woocommerce-MyAccount-navigation-link--edit-address > a::before  { content: '📍'; }
+body.woocommerce-account .woocommerce-MyAccount-navigation-link--edit-account > a::before  { content: '👤'; }
+body.woocommerce-account .woocommerce-MyAccount-navigation-link--wishlist > a::before      { content: '❤'; }
+
+/* Выход */
+body.woocommerce-account .woocommerce-MyAccount-navigation-link--customer-logout {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--wm-border);
+}
+body.woocommerce-account .woocommerce-MyAccount-navigation-link--customer-logout > a {
+  color: var(--wm-muted);
+}
+body.woocommerce-account .woocommerce-MyAccount-navigation-link--customer-logout > a::before {
+  content: '→';
+}
+body.woocommerce-account .woocommerce-MyAccount-navigation-link--customer-logout > a:hover {
+  color: #c0392b;
+  background: #fef2f2;
+  border-left-color: #fca5a5;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   CONTENT
+   ═══════════════════════════════════════════════════════════ */
+body.woocommerce-account .woocommerce-MyAccount-content {
+  background: var(--wm-card);
+  border-radius: var(--wm-r);
+  box-shadow: var(--wm-sh);
+  padding: 2.5rem;
+  padding-right: 2.5rem !important;
+  max-width: 900px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Заголовки */
+body.woocommerce-account .woocommerce-MyAccount-content h2 {
+  font-family: var(--wm-serif);
+  font-size: 2rem;
+  font-weight: 600;
+  color: var(--wm-brown);
+  margin-bottom: 1.5rem;
+  padding-bottom: .75rem;
+  border-bottom: 2px solid var(--wm-border);
+}
+body.woocommerce-account .woocommerce-MyAccount-content h3 {
+  font-family: var(--wm-serif);
+  font-size: 1.5rem;
+  font-weight: 500;
+  color: var(--wm-brown);
+  margin-bottom: 1rem;
+}
+
+/* Текст */
+body.woocommerce-account .woocommerce-MyAccount-content p {
+  font-size: 1.05rem;
+  color: var(--wm-brown-lt);
+  line-height: 1.75;
+}
+body.woocommerce-account .woocommerce-MyAccount-content p a {
+  color: var(--wm-accent);
+  text-decoration: none;
+  font-weight: 500;
+}
+body.woocommerce-account .woocommerce-MyAccount-content p a:hover {
+  text-decoration: underline;
+}
+
+/* ── Таблица заказов ─────────────────────────────────────── */
+body.woocommerce-account .woocommerce-orders-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0 10px;
+}
+body.woocommerce-account .woocommerce-orders-table thead th {
+  font-size: .82rem; font-weight: 600; text-transform: uppercase;
+  letter-spacing: .08em; color: var(--wm-muted);
+  padding: 0 1rem .5rem; border-bottom: 1px solid var(--wm-border);
+}
+body.woocommerce-account .woocommerce-orders-table tbody tr {
+  background: var(--wm-card);
+  box-shadow: 0 2px 10px rgba(74,55,40,.05);
+  transition: box-shadow .2s, transform .2s;
+}
+body.woocommerce-account .woocommerce-orders-table tbody tr:hover {
+  box-shadow: var(--wm-sh-h); transform: translateY(-1px);
+}
+body.woocommerce-account .woocommerce-orders-table tbody td {
+  padding: 1rem; vertical-align: middle; font-size: 1rem;
+  border-top: 1px solid var(--wm-border);
+  border-bottom: 1px solid var(--wm-border);
+}
+body.woocommerce-account .woocommerce-orders-table tbody td:first-child {
+  border-left: 1px solid var(--wm-border);
+  border-radius: var(--wm-rs) 0 0 var(--wm-rs);
+}
+body.woocommerce-account .woocommerce-orders-table tbody td:last-child {
+  border-right: 1px solid var(--wm-border);
+  border-radius: 0 var(--wm-rs) var(--wm-rs) 0;
+}
+
+body.woocommerce-account .woocommerce-orders-table__cell-order-number a {
+  font-weight: 700; font-size: 1.05rem; color: var(--wm-brown); text-decoration: none;
+}
+body.woocommerce-account .woocommerce-orders-table__cell-order-number a::before {
+  content: '#'; color: var(--wm-accent);
+}
+body.woocommerce-account .woocommerce-orders-table__cell-order-date {
+  color: var(--wm-muted); font-size: .95rem;
+}
+body.woocommerce-account .woocommerce-orders-table__cell-order-total {
+  font-weight: 600; color: var(--wm-brown); font-size: 1.05rem;
+}
+
+/* Статусы */
+body.woocommerce-account mark.order-status {
+  display: inline-block; padding: 5px 14px; border-radius: 50px;
+  font-size: .85rem; font-weight: 500; border: none;
+  background: var(--wm-card2); color: var(--wm-brown-lt);
+}
+body.woocommerce-account mark.order-status.status-processing,
+body.woocommerce-account mark.order-status.status-on-hold   { background: #fef3e2; color: #b45309; }
+body.woocommerce-account mark.order-status.status-completed { background: #ecfdf5; color: #065f46; }
+body.woocommerce-account mark.order-status.status-cancelled,
+body.woocommerce-account mark.order-status.status-failed    { background: #fef2f2; color: #991b1b; }
+body.woocommerce-account mark.order-status.status-pending   { background: #eff6ff; color: #1d4ed8; }
+
+/* Кнопка «Просмотр» */
+body.woocommerce-account .woocommerce-orders-table__cell-order-actions .button,
+body.woocommerce-account .woocommerce-button.button.view {
+  display: inline-flex; align-items: center; padding: 8px 20px;
+  border-radius: 50px; border: 1.5px solid var(--wm-accent);
+  background: transparent; color: var(--wm-accent);
+  font-family: var(--wm-sans); font-size: .9rem; font-weight: 500;
+  text-decoration: none; cursor: pointer; transition: all .2s;
+}
+body.woocommerce-account .woocommerce-orders-table__cell-order-actions .button:hover,
+body.woocommerce-account .woocommerce-button.button.view:hover {
+  background: var(--wm-accent); color: #fff;
+}
+
+/* ── Детали заказа ───────────────────────────────────────── */
+body.woocommerce-account .woocommerce-table--order-details { width: 100%; border-collapse: collapse; }
+body.woocommerce-account .woocommerce-table--order-details th,
+body.woocommerce-account .woocommerce-table--order-details td {
+  padding: 12px 16px; border-bottom: 1px solid var(--wm-border); font-size: 1rem;
+}
+body.woocommerce-account .woocommerce-table--order-details thead th {
+  background: var(--wm-card2); font-weight: 600; color: var(--wm-brown);
+  font-size: .82rem; text-transform: uppercase; letter-spacing: .06em;
+}
+
+body.woocommerce-account .woocommerce-order-overview {
+  background: var(--wm-card2); border-radius: var(--wm-rs);
+  padding: 1.25rem 1.5rem; margin-bottom: 1.5rem;
+}
+
+/* ── Формы ───────────────────────────────────────────────── */
+body.woocommerce-account .woocommerce .form-row label {
+  font-size: .85rem; font-weight: 600; text-transform: uppercase;
+  letter-spacing: .06em; color: var(--wm-muted); margin-bottom: 6px;
+}
+body.woocommerce-account .woocommerce .form-row input[type="text"],
+body.woocommerce-account .woocommerce .form-row input[type="email"],
+body.woocommerce-account .woocommerce .form-row input[type="tel"],
+body.woocommerce-account .woocommerce .form-row input[type="password"],
+body.woocommerce-account .woocommerce .form-row select,
+body.woocommerce-account .woocommerce .form-row textarea {
+  width: 100% !important;
+  padding: 12px 16px;
+  border: 1.5px solid var(--wm-border);
+  border-radius: var(--wm-rs);
+  background: #fff;
+  font-family: var(--wm-sans);
+  font-size: 1rem;
+  color: var(--wm-text);
+  transition: border-color .2s, box-shadow .2s;
+  outline: none;
+  box-sizing: border-box;
+}
+body.woocommerce-account .woocommerce .form-row input:focus,
+body.woocommerce-account .woocommerce .form-row select:focus,
+body.woocommerce-account .woocommerce .form-row textarea:focus {
+  border-color: var(--wm-accent);
+  box-shadow: 0 0 0 3px rgba(196,149,106,.15);
+}
+
+/* Fieldset (смена пароля) */
+body.woocommerce-account .woocommerce-EditAccountForm fieldset {
+  border: 1px solid var(--wm-border);
+  border-radius: var(--wm-rs);
+  padding: 1.5rem;
+}
+body.woocommerce-account .woocommerce-EditAccountForm fieldset legend {
+  font-family: var(--wm-serif);
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--wm-brown);
+  padding: 0 .5rem;
+}
+
+/* Кнопки */
+body.woocommerce-account .woocommerce .button[type="submit"],
+body.woocommerce-account .woocommerce button.button.alt {
+  padding: 14px 40px;
+  background: var(--wm-brown);
+  color: #fff;
+  border: none;
+  border-radius: 50px;
+  font-family: var(--wm-sans);
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all .25s;
+  box-shadow: 0 4px 16px rgba(74,55,40,.2);
+}
+body.woocommerce-account .woocommerce .button[type="submit"]:hover,
+body.woocommerce-account .woocommerce button.button.alt:hover {
+  background: var(--wm-accent);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 24px rgba(196,149,106,.35);
+}
+
+/* ── Адреса ──────────────────────────────────────────────── */
+body.woocommerce-account .woocommerce-Address {
+  background: var(--wm-card2);
+  border-radius: var(--wm-rs);
+  padding: 1.5rem;
+  border: 1px solid var(--wm-border);
+}
+body.woocommerce-account .woocommerce-Address-title .edit {
+  font-size: .88rem; color: var(--wm-accent); text-decoration: none;
+  font-weight: 500; padding: 4px 14px;
+  border: 1px solid var(--wm-accent); border-radius: 50px; transition: all .2s;
+}
+body.woocommerce-account .woocommerce-Address-title .edit:hover {
+  background: var(--wm-accent); color: #fff;
+}
+body.woocommerce-account address {
+  font-style: normal; font-size: 1rem; color: var(--wm-muted); line-height: 1.75;
+}
+
+/* ── Уведомления ─────────────────────────────────────────── */
+body.woocommerce-account .woocommerce-message,
+body.woocommerce-account .woocommerce-info,
+body.woocommerce-account .woocommerce-error {
+  border-radius: var(--wm-rs) !important;
+  border-left-width: 4px !important;
+  padding: 1rem 1.25rem !important;
+  font-size: 1rem;
+  margin-bottom: 1.5rem !important;
+}
+body.woocommerce-account .woocommerce-message { background: #ecfdf5 !important; border-color: #6ee7b7 !important; color: #065f46 !important; }
+body.woocommerce-account .woocommerce-info    { background: #eff6ff !important; border-color: #93c5fd !important; color: #1e40af !important; }
+body.woocommerce-account .woocommerce-error   { background: #fef2f2 !important; border-color: #fca5a5 !important; color: #991b1b !important; }
+
+/* Кнопки в уведомлениях */
+body.woocommerce-account .woocommerce-info .button,
+body.woocommerce-account .woocommerce-message .button {
+  padding: 8px 20px; border-radius: 50px;
+  background: var(--wm-brown); color: #fff !important;
+  font-family: var(--wm-sans); font-size: .9rem;
+  text-decoration: none; border: none; transition: background .2s;
+}
+body.woocommerce-account .woocommerce-info .button:hover { background: var(--wm-accent); }
+
+/* ── Загрузки ────────────────────────────────────────────── */
+body.woocommerce-account .woocommerce-MyAccount-downloads-file {
+  padding: 8px 18px; background: var(--wm-card2); border-radius: 50px;
+  font-size: .9rem; font-weight: 500; color: var(--wm-brown);
+  text-decoration: none; border: 1px solid var(--wm-border); transition: all .2s;
+}
+body.woocommerce-account .woocommerce-MyAccount-downloads-file:hover {
+  border-color: var(--wm-accent); color: var(--wm-accent);
+}
+
+/* ── Kadence таблицы ─────────────────────────────────────── */
+body.woocommerce-account .woocommerce-MyAccount-content table { border: none !important; }
+body.woocommerce-account .woocommerce-MyAccount-content .shop_table th {
+  background: var(--wm-card2) !important; color: var(--wm-muted) !important;
+  font-size: .82rem !important; font-weight: 600 !important;
+  text-transform: uppercase !important; letter-spacing: .08em !important;
+  border-bottom: 1px solid var(--wm-border) !important; border-top: none !important;
+}
+body.woocommerce-account .woocommerce-MyAccount-content .shop_table td {
+  border-bottom: 1px solid var(--wm-border) !important; border-top: none !important; font-size: 1rem;
+}
+
+/* ── YITH / WPFactory Wishlist ───────────────────────────── */
+body.woocommerce-account .yith-wcwl-wishlist .product-thumbnail img,
+body.woocommerce-account .wishlist_table .product-thumbnail img {
+  width: 64px !important; height: 64px !important;
+  object-fit: cover !important; border-radius: var(--wm-rs) !important;
+}
+body.woocommerce-account .yith-wcwl-wishlist .product-name a,
+body.woocommerce-account .wishlist_table .product-name a {
+  color: var(--wm-brown) !important; font-weight: 500 !important; font-size: 1rem !important;
+  text-decoration: none !important;
+}
+body.woocommerce-account .yith-wcwl-wishlist .product-name a:hover,
+body.woocommerce-account .wishlist_table .product-name a:hover { color: var(--wm-accent) !important; }
+body.woocommerce-account .yith-wcwl-wishlist .product-price,
+body.woocommerce-account .wishlist_table .product-price {
+  color: var(--wm-brown) !important; font-weight: 600 !important; font-size: 1.05rem !important;
+}
+body.woocommerce-account .yith-wcwl-wishlist .add-to-cart .button,
+body.woocommerce-account .wishlist_table .add-to-cart .button {
+  padding: 10px 22px !important; background: var(--wm-brown) !important;
+  color: #fff !important; border: none !important; border-radius: 50px !important;
+  font-family: var(--wm-sans) !important; font-size: .9rem !important;
+  cursor: pointer !important; transition: background .2s !important;
+}
+body.woocommerce-account .yith-wcwl-wishlist .add-to-cart .button:hover,
+body.woocommerce-account .wishlist_table .add-to-cart .button:hover {
+  background: var(--wm-accent) !important;
+}
+body.woocommerce-account .yith-wcwl-wishlist .product-remove a,
+body.woocommerce-account .wishlist_table .product-remove a {
+  position: static !important; display: inline-flex !important;
+  align-items: center !important; justify-content: center !important;
+  width: 30px !important; height: 30px !important; border-radius: 50% !important;
+  background: #fef2f2 !important; color: #ef4444 !important;
+  text-decoration: none !important; transition: background .2s !important;
+}
+body.woocommerce-account .yith-wcwl-wishlist .product-remove a:hover { background: #fee2e2 !important; }
+
+/* Разделитель */
+body.woocommerce-account .woocommerce-MyAccount-content::after {
+  content: ''; display: block; margin-top: 2.5rem;
+  padding-top: 1.5rem; border-top: 1px solid var(--wm-border);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   RESPONSIVE
+   ═══════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  body.woocommerce-account .woocommerce-MyAccount-content { padding: 1.5rem; }
+  body.woocommerce-account .woocommerce-MyAccount-navigation { padding: 1rem; }
+
+  body.woocommerce-account .woocommerce-orders-table thead { display: none; }
+  body.woocommerce-account .woocommerce-orders-table tbody tr {
+    display: block; margin-bottom: 1rem;
+    border: 1px solid var(--wm-border); border-radius: var(--wm-rs); padding: 1rem;
+  }
+  body.woocommerce-account .woocommerce-orders-table tbody td {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 6px 0; border: none;
+  }
+  body.woocommerce-account .woocommerce-orders-table tbody td::before {
+    content: attr(data-title); font-weight: 600; font-size: .8rem;
+    text-transform: uppercase; letter-spacing: .06em; color: var(--wm-muted);
+  }
+  body.woocommerce-account .woocommerce-orders-table tbody td:first-child,
+  body.woocommerce-account .woocommerce-orders-table tbody td:last-child {
+    border: none; border-radius: 0;
+  }
+}
+
+@media (max-width: 480px) {
+  body.woocommerce-account .woocommerce-MyAccount-content h2 { font-size: 1.6rem; }
+}
+</style>
+<?php
+}, 99 );
+
+/* ────────────────────────────────────────────────────────────
+   3b. CSS — КОРЗИНА
+   ──────────────────────────────────────────────────────────── */
+add_action( 'wp_head', function() {
+	if ( ! is_cart() ) return;
+?>
+<style id="warmory-cart">
+/* Переменные уже объявлены глобально, но корзина — отдельная страница */
+body.woocommerce-cart {
+  --wm-bg: #f7ede8;
+  --wm-card: #fdf7f4;
+  --wm-card2: #f4ece7;
+  --wm-border: #e8d9d1;
+  --wm-brown: #4a3728;
+  --wm-brown-lt: #7a5c48;
+  --wm-accent: #c4956a;
+  --wm-text: #3a2e28;
+  --wm-muted: #9e8a7e;
+  --wm-r: 16px;
+  --wm-rs: 10px;
+  --wm-sh: 0 4px 20px rgba(74,55,40,.07);
+  --wm-serif: 'Cormorant Garamond', Georgia, serif;
+  --wm-sans: 'Jost', 'Segoe UI', sans-serif;
+  overflow-y: scroll;
+}
+
+/* Ширина контейнера — как в личном кабинете */
+body.woocommerce-cart .site-container .site-inner-wrap,
+body.woocommerce-cart .content-container.site-container {
+  max-width: 1290px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
+  padding-top: 50px;
+  padding-bottom: 50px;
+}
+
+/* Шрифт */
+body.woocommerce-cart .woocommerce {
+  font-family: var(--wm-sans);
+  color: var(--wm-text);
+}
+
+/* ── Заголовок ───────────────────────────────────────────── */
+body.woocommerce-cart .woocommerce h2,
+body.woocommerce-cart .cart-collaterals h2 {
+  font-family: var(--wm-serif);
+  font-size: 1.8rem;
+  font-weight: 600;
+  color: var(--wm-brown);
+  margin-bottom: 1.25rem;
+}
+
+/* ── Таблица корзины ─────────────────────────────────────── */
+body.woocommerce-cart table.shop_table {
+  border: none !important;
+  border-collapse: collapse;
+  width: 100%;
+  background: var(--wm-card);
+  border-radius: var(--wm-r);
+  overflow: hidden;
+  box-shadow: var(--wm-sh);
+}
+
+body.woocommerce-cart table.shop_table thead th {
+  background: var(--wm-card2) !important;
+  color: var(--wm-muted) !important;
+  font-family: var(--wm-sans);
+  font-size: .82rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  padding: 14px 16px !important;
+  border-bottom: 1px solid var(--wm-border) !important;
+  border-top: none !important;
+}
+
+body.woocommerce-cart table.shop_table tbody td {
+  padding: 20px 16px !important;
+  vertical-align: middle !important;
+  border-bottom: 1px solid var(--wm-border) !important;
+  border-top: none !important;
+  font-size: 1rem;
+  background: transparent !important;
+}
+
+body.woocommerce-cart table.shop_table tbody tr:last-child td {
+  border-bottom: none !important;
+}
+
+/* Миниатюра товара */
+body.woocommerce-cart table.shop_table .product-thumbnail img {
+  width: 72px !important;
+  height: 72px !important;
+  object-fit: cover;
+  border-radius: var(--wm-rs);
+  border: 1px solid var(--wm-border);
+}
+
+/* Название товара */
+body.woocommerce-cart table.shop_table .product-name a {
+  color: var(--wm-brown);
+  font-weight: 500;
+  font-size: 1rem;
+  text-decoration: none;
+  transition: color .2s;
+}
+body.woocommerce-cart table.shop_table .product-name a:hover {
+  color: var(--wm-accent);
+}
+
+/* Вариации */
+body.woocommerce-cart table.shop_table .product-name .variation {
+  font-size: .88rem;
+  color: var(--wm-muted);
+  margin-top: 4px;
+}
+body.woocommerce-cart table.shop_table .product-name .variation dt,
+body.woocommerce-cart table.shop_table .product-name .variation dd {
+  display: inline;
+  margin: 0;
+  font-size: .88rem;
+}
+
+/* Цена */
+body.woocommerce-cart table.shop_table .product-price,
+body.woocommerce-cart table.shop_table .product-subtotal {
+  font-weight: 600;
+  color: var(--wm-brown);
+  font-size: 1rem;
+}
+
+/* Количество */
+body.woocommerce-cart table.shop_table .quantity .qty {
+  width: 60px;
+  padding: 8px 10px;
+  border: 1.5px solid var(--wm-border);
+  border-radius: var(--wm-rs);
+  font-family: var(--wm-sans);
+  font-size: 1rem;
+  color: var(--wm-text);
+  text-align: center;
+  outline: none;
+  transition: border-color .2s;
+}
+body.woocommerce-cart table.shop_table .quantity .qty:focus {
+  border-color: var(--wm-accent);
+}
+
+/* Кнопка удалить */
+body.woocommerce-cart table.shop_table .product-remove a.remove {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #fef2f2;
+  color: #ef4444 !important;
+  font-size: 1.2rem;
+  text-decoration: none;
+  transition: background .2s;
+}
+body.woocommerce-cart table.shop_table .product-remove a.remove:hover {
+  background: #fee2e2;
+}
+
+/* Купон */
+body.woocommerce-cart .coupon .input-text {
+  padding: 10px 14px;
+  border: 1.5px solid var(--wm-border);
+  border-radius: var(--wm-rs);
+  font-family: var(--wm-sans);
+  font-size: .95rem;
+  outline: none;
+  transition: border-color .2s;
+}
+body.woocommerce-cart .coupon .input-text:focus {
+  border-color: var(--wm-accent);
+}
+
+/* Кнопки в таблице */
+body.woocommerce-cart .coupon .button,
+body.woocommerce-cart table.shop_table .actions .button {
+  background: #4a3728 !important;
+  color: var(--wm-accent) !important;
+  border: none;
+  border-radius: 50px;
+  font-family: var(--wm-sans);
+  font-size: .9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all .2s;
+}
+
+/* Перебиваем Kadence :not(:hover) чёрный фон */
+body.woocommerce-cart table.cart .coupon .button:not(:hover),
+body.woocommerce-cart table.cart td.actions .button:not(:hover) {
+  background: #4a3728 !important;
+  color: var(--wm-accent) !important;
+}
+
+body.woocommerce-cart .coupon .button:hover,
+body.woocommerce-cart table.shop_table .actions .button:hover {
+  background: var(--wm-accent) !important;
+  color: #fff !important;
+}
+
+/* Обновить корзину (disabled) */
+body.woocommerce-cart table.shop_table .actions .button[disabled],
+body.woocommerce-cart table.cart td.actions .button:disabled {
+  background-color: #4a3728 !important;
+  color: var(--wm-accent) !important;
+  opacity: .5;
+  cursor: not-allowed;
+}
+
+/* ── Сумма корзины ───────────────────────────────────────── */
+body.woocommerce-cart .cart-collaterals .cart_totals {
+  background: var(--wm-card);
+  border-radius: var(--wm-r);
+  box-shadow: var(--wm-sh);
+  padding: 2rem;
+}
+
+body.woocommerce-cart .cart_totals table {
+  border: none !important;
+}
+
+body.woocommerce-cart .cart_totals table th {
+  background: transparent !important;
+  color: var(--wm-muted) !important;
+  font-size: .88rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  padding: 12px 0 !important;
+  border-bottom: 1px solid var(--wm-border) !important;
+  border-top: none !important;
+}
+
+body.woocommerce-cart .cart_totals table td {
+  padding: 12px 0 !important;
+  border-bottom: 1px solid var(--wm-border) !important;
+  border-top: none !important;
+  font-size: 1rem;
+  color: var(--wm-brown);
+  text-align: right;
+}
+
+body.woocommerce-cart .cart_totals .order-total th,
+body.woocommerce-cart .cart_totals .order-total td {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--wm-brown);
+  border-bottom: none !important;
+  padding-top: 16px !important;
+}
+
+/* Доставка */
+body.woocommerce-cart .cart_totals .woocommerce-shipping-destination {
+  font-size: .88rem;
+  color: var(--wm-muted);
+}
+
+body.woocommerce-cart .cart_totals .shipping-calculator-button {
+  color: var(--wm-accent);
+  font-size: .88rem;
+  text-decoration: none;
+  font-weight: 500;
+}
+body.woocommerce-cart .cart_totals .shipping-calculator-button:hover {
+  text-decoration: underline;
+}
+
+/* Кнопка «Оформить заказ» */
+body.woocommerce-cart .cart_totals .wc-proceed-to-checkout .checkout-button {
+  display: block;
+  width: 100%;
+  padding: 16px;
+  background: var(--wm-brown);
+  color: #fff !important;
+  border: none;
+  border-radius: 50px;
+  font-family: var(--wm-sans);
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: .03em;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all .25s;
+  box-shadow: 0 4px 16px rgba(74,55,40,.2);
+  margin-top: 1.25rem;
+}
+body.woocommerce-cart .cart_totals .wc-proceed-to-checkout .checkout-button:hover {
+  background: var(--wm-accent);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 24px rgba(196,149,106,.35);
+}
+
+/* ── Уведомления ─────────────────────────────────────────── */
+body.woocommerce-cart .woocommerce-message,
+body.woocommerce-cart .woocommerce-info,
+body.woocommerce-cart .woocommerce-error {
+  border-radius: var(--wm-rs) !important;
+  border-left-width: 4px !important;
+  padding: 1rem 1.25rem !important;
+  font-size: 1rem;
+  margin-bottom: 1.5rem !important;
+  font-family: var(--wm-sans);
+}
+body.woocommerce-cart .woocommerce-message { background: #ecfdf5 !important; border-color: #6ee7b7 !important; color: #065f46 !important; }
+body.woocommerce-cart .woocommerce-info    { background: #eff6ff !important; border-color: #93c5fd !important; color: #1e40af !important; }
+body.woocommerce-cart .woocommerce-error   { background: #fef2f2 !important; border-color: #fca5a5 !important; color: #991b1b !important; }
+
+body.woocommerce-cart .woocommerce-message .button,
+body.woocommerce-cart .woocommerce-info .button {
+  padding: 8px 20px; border-radius: 50px;
+  background: var(--wm-brown); color: #fff !important;
+  font-family: var(--wm-sans); font-size: .9rem;
+  text-decoration: none; border: none; transition: background .2s;
+}
+body.woocommerce-cart .woocommerce-message .button:hover,
+body.woocommerce-cart .woocommerce-info .button:hover { background: var(--wm-accent); }
+
+/* ── Пустая корзина ──────────────────────────────────────── */
+body.woocommerce-cart .cart-empty {
+  text-align: center;
+  font-family: var(--wm-serif);
+  font-size: 1.4rem;
+  color: var(--wm-brown);
+  padding: 3rem 2rem;
+}
+body.woocommerce-cart .return-to-shop .button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 36px;
+  background: var(--wm-brown);
+  color: #fff !important;
+  border-radius: 50px;
+  font-family: var(--wm-sans);
+  font-size: 1rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition: all .2s;
+  box-shadow: 0 4px 16px rgba(74,55,40,.2);
+}
+body.woocommerce-cart .return-to-shop .button:hover {
+  background: var(--wm-accent);
+}
+
+/* ── Responsive ──────────────────────────────────────────── */
+@media (max-width: 768px) {
+  body.woocommerce-cart .cart-collaterals .cart_totals {
+    padding: 1.5rem;
+  }
+  body.woocommerce-cart table.shop_table {
+    border-radius: var(--wm-rs);
+  }
+}
+</style>
+<?php
+}, 99 );
+
+// Убираем дефолтное «Hello {name}...»
+add_filter( 'gettext', function( $translated, $text, $domain ) {
+	if ( 'woocommerce' === $domain && is_account_page() && false !== strpos( $text, 'Hello %1$s (not %1$s?' ) ) {
+		return '';
+	}
+	return $translated;
+}, 20, 3 );
+
+// Приветствие
+add_action( 'woocommerce_account_dashboard', function() {
+	$user = wp_get_current_user();
+	$name = ! empty( $user->first_name ) ? $user->first_name : $user->display_name;
+	$hour = (int) current_time( 'G' );
+	$greeting = $hour < 12 ? 'Доброе утро' : ( $hour < 18 ? 'Добрый день' : 'Добрый вечер' );
+	?>
+	<div style="background:var(--wm-card2); border-radius:var(--wm-rs); padding:1.5rem 2rem; margin-bottom:2rem; border-left:4px solid var(--wm-accent);">
+		<h2 style="font-family:var(--wm-serif)!important; font-size:1.8rem!important; font-weight:600!important; color:var(--wm-brown)!important; margin:0 0 .4rem!important; padding:0!important; border:none!important;">
+			<?php echo esc_html( $greeting . ', ' . $name . '!' ); ?>
+		</h2>
+		<p style="margin:0!important; color:var(--wm-brown-lt); font-size:1.05rem;">
+			Управляйте заказами, адресами и настройками вашего аккаунта.
+		</p>
+	</div>
+	<?php
+}, 5 );
+
+// Быстрые ссылки
+add_action( 'woocommerce_account_dashboard', function() {
+	$links = [
+		[ 'endpoint' => 'orders',       'icon' => '🛍', 'title' => 'Мои заказы',  'desc' => 'История и статус' ],
+		[ 'endpoint' => 'edit-address',  'icon' => '📍', 'title' => 'Адреса',      'desc' => 'Доставка и оплата' ],
+		[ 'endpoint' => 'edit-account',  'icon' => '👤', 'title' => 'Настройки',   'desc' => 'Данные профиля' ],
+	];
+	if ( class_exists( 'WC_Wishlist' ) || defined( 'WC_WISHLIST_PLUGIN_VERSION' ) || function_exists( 'YITH_WCWL' ) ) {
+		$links[] = [ 'endpoint' => 'wishlist', 'icon' => '♡', 'title' => 'Избранное', 'desc' => 'Отложенные товары' ];
+	}
+	?>
+	<style>
+		.wm-qlinks{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1rem;margin-bottom:1.5rem}
+		.wm-ql{display:flex;flex-direction:column;align-items:center;gap:.4rem;padding:1.75rem 1rem;background:#fff;border:1px solid var(--wm-border);border-radius:var(--wm-rs);text-decoration:none;text-align:center;transition:box-shadow .25s,transform .25s}
+		.wm-ql:hover{box-shadow:var(--wm-sh-h);transform:translateY(-3px)}
+		.wm-ql__i{font-size:2.2rem;line-height:1}
+		.wm-ql__t{font-family:var(--wm-sans);font-weight:600;font-size:1rem;color:var(--wm-brown)}
+		.wm-ql__d{font-size:.88rem;color:var(--wm-muted)}
+	</style>
+	<div class="wm-qlinks">
+		<?php foreach ( $links as $l ) : ?>
+		<a href="<?php echo esc_url( wc_get_account_endpoint_url( $l['endpoint'] ) ); ?>" class="wm-ql">
+			<span class="wm-ql__i"><?php echo $l['icon']; ?></span>
+			<span class="wm-ql__t"><?php echo esc_html( $l['title'] ); ?></span>
+			<span class="wm-ql__d"><?php echo esc_html( $l['desc'] ); ?></span>
+		</a>
+		<?php endforeach; ?>
+	</div>
+	<?php
+}, 10 );
+
+// Пустые заказы
+add_action( 'woocommerce_account_orders_endpoint', function() {
+	if ( wc_get_customer_order_count( get_current_user_id() ) > 0 ) return;
+	echo '<style>body.woocommerce-account .woocommerce-MyAccount-content .woocommerce-info{display:none!important}.wm-shop-btn:hover{background:var(--wm-accent)!important}</style>';
+	?>
+	<div style="text-align:center; padding:3rem 2rem;">
+		<div style="font-size:3.5rem; margin-bottom:1rem;">🛍</div>
+		<p style="font-family:var(--wm-serif); font-size:1.5rem; color:var(--wm-brown); margin-bottom:.5rem;">У вас пока нет заказов</p>
+		<p style="font-size:1rem; color:var(--wm-muted); margin-bottom:1.5rem;">Откройте для себя наш ассортимент изделий ручной работы.</p>
+		<a href="<?php echo esc_url( wc_get_page_permalink( 'shop' ) ); ?>" class="wm-shop-btn" style="display:inline-flex;align-items:center;gap:8px;padding:14px 36px;background:var(--wm-brown);color:#fff;border-radius:50px;font-family:var(--wm-sans);font-size:1rem;font-weight:500;text-decoration:none;transition:background .2s;">Перейти в каталог</a>
+	</div>
+	<?php
+}, 5 );
+
+// Меню: удаляем Загрузки, переименовываем Wishlist, бейджи
+add_filter( 'woocommerce_account_menu_items', function( $items ) {
+	if ( ! is_user_logged_in() ) return $items;
+
+	// Удаляем «Загрузки»
+	unset( $items['downloads'] );
+
+	// Переименовываем Wishlist
+	if ( isset( $items['wishlist'] ) ) {
+		$items['wishlist'] = 'Избранные товары';
+	}
+
+	// Бейдж заказов
+	$order_count = wc_get_customer_order_count( get_current_user_id() );
+	if ( $order_count > 0 && isset( $items['orders'] ) ) {
+		$items['orders'] .= ' <span style="display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;padding:0 6px;border-radius:50px;background:var(--wm-accent);color:#fff;font-size:.72rem;font-weight:600;margin-left:auto;">' . $order_count . '</span>';
+	}
+
+	// Бейдж избранного (WPFactory Wishlist)
+	if ( isset( $items['wishlist'] ) ) {
+		$wishlist_count = 0;
+		if ( function_exists( 'alg_wc_wl' ) ) {
+			// WPFactory: WooCommerce Wishlist
+			$wishlist = get_user_meta( get_current_user_id(), '_alg_wc_wl', true );
+			$wishlist_count = is_array( $wishlist ) ? count( $wishlist ) : 0;
+		} elseif ( class_exists( 'WC_Wishlists_Wishlist' ) ) {
+			// WooCommerce Wishlist plugin
+			$wishlists = WC_Wishlists_Wishlist::get_wishlists();
+			if ( ! empty( $wishlists ) ) {
+				foreach ( $wishlists as $wl ) {
+					$wishlist_count += $wl->get_wishlist_item_count();
+				}
+			}
+		}
+		// Пробуем через cookie/meta если плагин WPFactory Multiple Wishlists
+		if ( $wishlist_count === 0 && function_exists( 'wc_wishlists_get_wishlists_count' ) ) {
+			$wishlist_count = wc_wishlists_get_wishlists_count();
+		}
+		if ( $wishlist_count > 0 ) {
+			$items['wishlist'] .= ' <span style="display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;padding:0 6px;border-radius:50px;background:var(--wm-accent);color:#fff;font-size:.72rem;font-weight:600;margin-left:auto;">' . $wishlist_count . '</span>';
+		}
+	}
+
+	return $items;
+}, 20 );
